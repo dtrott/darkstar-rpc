@@ -1,0 +1,113 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.projectdarkstar.rpc.protocolbuffers</groupId>
+        <artifactId>darkstar</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>integration-test</artifactId>
+    <packaging>jar</packaging>
+    <name>Darkstar RPC Integration Tests</name>
+    <description>Integration Tests for Project Darkstar RPC library</description>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>com.google.protobuf.tools</groupId>
+                <artifactId>maven-protoc-plugin</artifactId>
+                <configuration>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <dependencies>
+
+        <!-- Project -->
+
+        <dependency>
+            <groupId>com.projectdarkstar.rpc.protocolbuffers</groupId>
+            <artifactId>common</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.projectdarkstar.rpc.protocolbuffers</groupId>
+            <artifactId>server</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.projectdarkstar.rpc.protocolbuffers</groupId>
+            <artifactId>client</artifactId>
+        </dependency>
+
+        <!-- Other -->
+
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>2.2.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.projectdarkstar.client</groupId>
+            <artifactId>sgs-client</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.projectdarkstar.server</groupId>
+            <artifactId>sgs-server</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Logging -->
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-jdk14</artifactId>
+        </dependency>
+
+        <!-- Test -->
+
+        <dependency>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <scope>test</scope>
+            <classifier>jdk15</classifier>
+        </dependency>
+
+        <dependency>
+            <groupId>org.easymock</groupId>
+            <artifactId>easymock</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.easymock</groupId>
+            <artifactId>easymockclassextension</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>net.java.dev</groupId>
+            <artifactId>mocksgs</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+</project>

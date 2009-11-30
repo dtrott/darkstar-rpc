@@ -1,0 +1,45 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.projectdarkstar.rpc.protocolbuffers</groupId>
+        <artifactId>darkstar</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>server</artifactId>
+    <packaging>jar</packaging>
+    <name>Darkstar RPC Server</name>
+    <description>RPC library for Project Darkstar clients</description>
+
+    <dependencies>
+
+        <!-- Project -->
+
+        <dependency>
+            <groupId>com.projectdarkstar.rpc.protocolbuffers</groupId>
+            <artifactId>common</artifactId>
+        </dependency>
+
+        <!-- Other -->
+
+        <dependency>
+            <groupId>com.projectdarkstar.server</groupId>
+            <artifactId>sgs-server</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Logging -->
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-jdk14</artifactId>
+        </dependency>
+    </dependencies>
+</project>

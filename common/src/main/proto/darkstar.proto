@@ -1,0 +1,24 @@
+package projectdarkstar;
+
+option java_package = "com.projectdarkstar.rpc";
+option java_outer_classname = "CoreRpc";
+
+message ServiceName {
+    optional string full_name = 1;
+}
+
+message ServiceDetails {
+    optional string full_name = 1;
+    optional int32  id = 2;
+
+    repeated MethodDetails method = 3;
+}
+
+message MethodDetails {
+    optional string name = 1;
+    optional int32  id = 2;
+}
+
+service MetaService {
+    rpc LookupService(ServiceName) returns(ServiceDetails);
+}
