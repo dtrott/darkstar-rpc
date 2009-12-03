@@ -54,7 +54,7 @@
 
         <dependency>
             <groupId>com.google.protobuf</groupId>
-            <artifactId>protobuf-java</artifactId>
+            <artifactId>protobuf-java-serializable</artifactId>
             <version>2.2.0</version>
         </dependency>
 

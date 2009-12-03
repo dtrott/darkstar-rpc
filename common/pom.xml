@@ -32,7 +32,7 @@
     <dependencies>
         <dependency>
             <groupId>com.google.protobuf</groupId>
-            <artifactId>protobuf-java</artifactId>
+            <artifactId>protobuf-java-serializable</artifactId>
         </dependency>
 
         <dependency>
