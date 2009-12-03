@@ -8,15 +8,15 @@ import java.lang.reflect.Method;
 
 public class RemoteCallImpl implements RemoteCall {
 
-    private final long requestId;
+    private final int requestId;
     private Class<? extends Message> responseClass;
     private RpcCallback<Message> callback;
 
-    public RemoteCallImpl(long requestId) {
+    public RemoteCallImpl(int requestId) {
         this.requestId = requestId;
     }
 
-    public long getRequestId() {
+    public int getRequestId() {
         return requestId;
     }
 
@@ -42,6 +42,8 @@ public class RemoteCallImpl implements RemoteCall {
         this.responseClass = responsePrototype.getClass();
         this.callback = callback;
     }
+
+    // TODO
 
     @Override
     public void reset() {

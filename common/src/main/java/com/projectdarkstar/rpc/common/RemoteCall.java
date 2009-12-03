@@ -7,7 +7,7 @@ import com.google.protobuf.RpcController;
 import java.io.Serializable;
 
 public interface RemoteCall extends RpcController, Serializable {
-    long getRequestId();
+    int getRequestId();
 
     Message getResponsePrototype();
 

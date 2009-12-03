@@ -9,21 +9,21 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ClientCallbackCache implements CallbackCache, Serializable {
-    private final Map<Long, RemoteCall> callbacks;
-    protected long nextRequestId;
+    private final Map<Integer, RemoteCall> callbacks;
+    protected int nextRequestId;
 
     public ClientCallbackCache() {
-        this.callbacks = new HashMap<Long, RemoteCall>();
+        this.callbacks = new HashMap<Integer, RemoteCall>();
         this.nextRequestId = 1;
     }
 
-    public synchronized long getNextRequestId() {
+    public synchronized int getNextRequestId() {
         return this.nextRequestId++;
     }
 
     @Override
     public RemoteCall newRpcController() {
-        final long requestId = getNextRequestId();
+        final int requestId = getNextRequestId();
         RemoteCallImpl remoteRpcCall = new RemoteCallImpl(requestId);
 
         synchronized (callbacks) {
@@ -34,7 +34,7 @@ public class ClientCallbackCache implements CallbackCache, Serializable {
     }
 
     @Override
-    public RemoteCall removeCallback(long requestId) {
+    public RemoteCall removeCallback(int requestId) {
         synchronized (callbacks) {
             return callbacks.remove(requestId);
         }

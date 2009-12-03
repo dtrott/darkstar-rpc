@@ -5,6 +5,8 @@ import com.google.protobuf.Message;
 import com.google.protobuf.RpcCallback;
 import com.google.protobuf.RpcChannel;
 import com.google.protobuf.RpcController;
+import com.projectdarkstar.rpc.CoreRpc.*;
+import com.projectdarkstar.rpc.CoreRpc;
 import org.apache.commons.lang.Validate;
 
 import java.io.Serializable;
@@ -39,10 +41,16 @@ public abstract class DarkstarRpcImpl implements DarkstarRpc, RpcChannel, Serial
         final int methodId = namingService.getMethodId(serviceId, method.getName());
 
         remoteCall.setCallback(responsePrototype, messageRpcCallback);
-        final long requestId = remoteCall.getRequestId();
+        final int requestId = remoteCall.getRequestId();
 
-        sendRequest(serviceId, methodId, requestId, request);
+        final Header.Builder headerBuilder = Header.newBuilder();
+        headerBuilder.setMessageType(Header.MessageType.SYNC_REQUEST);
+        headerBuilder.setRequestId(requestId);
+        headerBuilder.setServiceId(serviceId);
+        headerBuilder.setMethodId(methodId);
+
+        sendMessage(headerBuilder.build(), request);
     }
 
-    protected abstract void sendRequest(int serviceId, int methodId, long requestId, Message request);
+    protected abstract void sendMessage(Header header, Message request);
 }

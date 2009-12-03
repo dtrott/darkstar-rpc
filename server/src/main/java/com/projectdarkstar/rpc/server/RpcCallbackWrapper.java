@@ -11,18 +11,16 @@ public class RpcCallbackWrapper implements RpcCallback<Message>, Serializable {
     private static final long serialVersionUID = 1L;
 
     private final ManagedReference<ServerChannelRpcListener> delegate;
-    private final int serviceId;
-    private final long requestId;
+    private final int requestId;
 
-    public RpcCallbackWrapper(final ServerChannelRpcListener delegate, final int serviceId, final long requestId) {
+    public RpcCallbackWrapper(final ServerChannelRpcListener delegate, final int requestId) {
         this.delegate = AppContext.getDataManager().createReference(delegate);
-        this.serviceId = serviceId;
-        this.requestId =requestId;
+        this.requestId = requestId;
     }
 
     @Override
     public void run(Message message) {
-        getForUpdate().getController().sendResponse(serviceId, requestId, message);
+        getForUpdate().getController().sendResponse(requestId, message);
     }
 
     private ServerChannelRpcListener getForUpdate() {

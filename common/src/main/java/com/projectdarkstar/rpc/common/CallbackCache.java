@@ -6,5 +6,5 @@ public interface CallbackCache extends Serializable {
 
     RemoteCall newRpcController();
 
-    RemoteCall removeCallback(long requestId);
+    RemoteCall removeCallback(int requestId);
 }

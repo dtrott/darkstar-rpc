@@ -2,11 +2,13 @@ package com.projectdarkstar.rpc.server;
 
 import com.example.Example.SimpleService;
 import com.example.Example.StringPair;
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.RpcCallback;
 import com.google.protobuf.RpcChannel;
 import com.google.protobuf.RpcController;
-import static com.projectdarkstar.rpc.server.TestUtils.buildPair;
+import com.projectdarkstar.rpc.CoreRpc.Header;
 import com.projectdarkstar.rpc.common.DarkstarRpc;
+import static com.projectdarkstar.rpc.server.TestUtils.buildPair;
 import com.sun.sgs.app.AppContext;
 import com.sun.sgs.app.Channel;
 import com.sun.sgs.app.ChannelListener;
@@ -25,6 +27,8 @@ import static org.easymock.classextension.EasyMock.expect;
 import static org.easymock.classextension.EasyMock.replay;
 import static org.easymock.classextension.EasyMock.verify;
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertTrue;
 import org.testng.annotations.Test;
 
 import java.nio.ByteBuffer;
@@ -32,12 +36,11 @@ import java.nio.ByteBuffer;
 @Test
 public class TestRpcCall {
     @SuppressWarnings("unchecked")
-     static <T> Class<T> suppressGenerics(Class in) {
-         return in;
-     }
+    static <T> Class<T> suppressGenerics(Class in) {
+        return in;
+    }
 
     private final static Class<RpcCallback<StringPair>> stringCallbackClass = suppressGenerics(RpcCallback.class);
-
 
     @Test
     public void blah() throws Exception {
@@ -66,14 +69,12 @@ public class TestRpcCall {
 
         // Start the test.
 
-
         final ServerChannelRpcListener listener = new ServerChannelRpcListener(ServerNamingServiceFactory.getNamingService());
         final Channel channel = AppContext.getChannelManager().createChannel("testChannel", listener, Delivery.RELIABLE);
         listener.setChannel(channel);
         final DarkstarRpc darkstarRpc = listener.getDarkstarRpc();
 
-
-        RpcChannel rpcChannel =darkstarRpc.getRpcChannel();
+        RpcChannel rpcChannel = darkstarRpc.getRpcChannel();
         final RpcController controller = darkstarRpc.newRpcController();
 
         final SimpleService.Stub helloStub = SimpleService.newStub(rpcChannel);
@@ -81,9 +82,7 @@ public class TestRpcCall {
         helloStub.exchange(controller, buildPair("hello", "world"), mockCallback);
 
         final ByteBuffer buffer = message1.getValue();
-        assertEquals(buffer.get(), 1);
-        assertEquals(buffer.get(), 0);
-        assertEquals(buffer.getLong(), 1);
+        assertHeader(buffer, 8, 1, 1, 0);
         assertEquals(buffer.remaining(), 14);
 
         final StringPair pair = buildPair(buffer);
@@ -98,8 +97,8 @@ public class TestRpcCall {
         listener.receivedMessage(channel, null, buffer);
 
         final ByteBuffer value = message2.getValue();
-        assertEquals(value.get(), -127);
-        assertEquals(value.getLong(), 1);
+        assertHeader(value, 4, 1, null, null);
+
         assertEquals(value.remaining(), 10);
 
         final StringPair message = StringPair.newBuilder().mergeFrom(value.array(), value.position(), value.remaining()).build();
@@ -107,5 +106,29 @@ public class TestRpcCall {
 
         verify(mockChannelFactory, mockChannel, mockCallback);
     }
-}
 
+    private void assertHeader(ByteBuffer buffer, int headerLength, final int requestId, final Integer serviceId, final Integer methodId) throws InvalidProtocolBufferException {
+        final int headLengthByte = buffer.get();
+        assertEquals(headLengthByte, headerLength);
+        assertTrue(buffer.remaining() >= headerLength);
+
+        final byte[] headerBytes = new byte[headerLength];
+        buffer.get(headerBytes);
+
+        final Header header = Header.newBuilder().mergeFrom(headerBytes).build();
+
+        assertEquals(header.getRequestId(), requestId);
+
+        if (serviceId == null) {
+            assertFalse(header.hasServiceId());
+        } else {
+            assertEquals(header.getServiceId(), serviceId.intValue());
+        }
+
+        if (methodId == null) {
+            assertFalse(header.hasMethodId());
+        } else {
+            assertEquals(header.getMethodId(), methodId.intValue());
+        }
+    }
+}

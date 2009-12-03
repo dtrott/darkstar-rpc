@@ -3,6 +3,19 @@ package projectdarkstar;
 option java_package = "com.projectdarkstar.rpc";
 option java_outer_classname = "CoreRpc";
 
+message Header {
+    enum MessageType {
+        ASYNC_REQUEST = 0;
+        SYNC_REQUEST = 1;
+        RESPONSE = 2;
+    }
+
+    optional MessageType message_type = 1;
+    optional int32       request_id = 2;
+    optional int32       service_id = 3;
+    optional int32       method_id  = 4;
+}
+
 message ServiceName {
     optional string full_name = 1;
 }

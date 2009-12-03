@@ -7,6 +7,7 @@ import com.google.protobuf.RpcCallback;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.RpcUtil;
 import com.google.protobuf.ServiceException;
+import com.projectdarkstar.rpc.CoreRpc.Header;
 import com.projectdarkstar.rpc.common.AbstractChannelController;
 import com.projectdarkstar.rpc.common.CallbackCache;
 import com.projectdarkstar.rpc.common.DarkstarRpc;
@@ -54,12 +55,12 @@ public class ClientChannelRpcListener extends DarkstarRpcImpl
         }
 
         @Override
-        public RpcCallback<Message> newResponseCallback(final int serviceId, final long requestId) {
+        public RpcCallback<Message> newResponseCallback(final int requestId) {
 
             return new RpcCallback<Message>() {
                 @Override
                 public void run(Message message) {
-                    controller.sendResponse(serviceId, requestId, message);
+                    controller.sendResponse(requestId, message);
                 }
             };
         }
@@ -108,8 +109,9 @@ public class ClientChannelRpcListener extends DarkstarRpcImpl
         controller.receivedMessage(message, local);
     }
 
-    public void sendRequest(int serviceId, int methodId, long requestId, Message request) {
-        controller.sendRequest(serviceId, methodId, requestId, request);
+    @Override
+    protected void sendMessage(Header header, Message request) {
+        controller.sendMessage(header, request);
     }
 
     @Override

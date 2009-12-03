@@ -6,6 +6,7 @@ import com.google.protobuf.Message;
 import com.google.protobuf.RpcCallback;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.Service;
+import com.projectdarkstar.rpc.CoreRpc.Header;
 import org.apache.commons.lang.Validate;
 
 import java.io.Serializable;
@@ -45,10 +46,11 @@ public class LocalRegistryImpl implements LocalRegistry, Serializable {
     }
 
     @Override
-    public void receivedRequest(final int serviceId, ByteBuffer byteBuffer) {
+    public void receivedRequest(Header header, ByteBuffer byteBuffer) {
         RpcController rpcController = newRpcController();
-        final int methodId = 0xFF & byteBuffer.get();
-        final long requestId = byteBuffer.getLong();
+        final int requestId = header.getRequestId();
+        final int serviceId = header.getServiceId();
+        final int methodId = header.getMethodId();
 
         final LocalService localService = services.get(serviceId);
         if (localService == null) {
@@ -62,7 +64,7 @@ public class LocalRegistryImpl implements LocalRegistry, Serializable {
 
         final Message request = ByteBufferInputStream.buildMessage(requestPrototype, byteBuffer);
 
-        localService.getService().callMethod(methodDescriptor, rpcController, request, controller.newResponseCallback(serviceId, requestId));
+        localService.getService().callMethod(methodDescriptor, rpcController, request, controller.newResponseCallback(requestId));
     }
 
     private MethodDescriptor getMethodDescriptor(ServiceDescriptor serviceDescriptor, int serviceId, int methodId) {

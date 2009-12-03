@@ -14,7 +14,7 @@ public class RemoteCallWrapper implements RemoteCall {
         this.delegate = AppContext.getDataManager().createReference(remoteRpcCall);
     }
 
-    public long getRequestId() {
+    public int getRequestId() {
         return get().getRequestId();
     }
 

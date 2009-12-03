@@ -1,9 +1,10 @@
 package com.projectdarkstar.rpc.server;
 
 import com.google.protobuf.BlockingRpcChannel;
+import com.google.protobuf.Message;
 import com.google.protobuf.RpcChannel;
 import com.google.protobuf.RpcController;
-import com.google.protobuf.Message;
+import com.projectdarkstar.rpc.CoreRpc.Header;
 import com.projectdarkstar.rpc.common.CallbackCache;
 import com.projectdarkstar.rpc.common.DarkstarRpc;
 import com.projectdarkstar.rpc.common.DarkstarRpcImpl;
@@ -33,8 +34,8 @@ class ServerDarkstarRpc extends DarkstarRpcImpl implements DarkstarRpc, RpcChann
     }
 
     @Override
-    protected void sendRequest(int serviceId, int methodId, long requestId, Message request) {
-        listener.get().sendRequest(serviceId, methodId,requestId, request);
+    protected void sendMessage(Header header, Message request) {
+        listener.get().sendMessage(header, request);
     }
 
     @Override

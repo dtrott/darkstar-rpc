@@ -5,14 +5,15 @@ import com.google.protobuf.RpcCallback;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.RpcUtil;
 import com.google.protobuf.SerializableRpcCallbackProvider;
+import com.projectdarkstar.rpc.CoreRpc.Header;
 import com.projectdarkstar.rpc.CoreRpc.MetaService;
 import com.projectdarkstar.rpc.common.AbstractChannelController;
+import com.projectdarkstar.rpc.common.CallbackCache;
 import com.projectdarkstar.rpc.common.ChannelController;
 import com.projectdarkstar.rpc.common.DarkstarRpc;
 import com.projectdarkstar.rpc.common.LocalRegistry;
 import com.projectdarkstar.rpc.common.LocalRegistryImpl;
 import com.projectdarkstar.rpc.common.NamingService;
-import com.projectdarkstar.rpc.common.CallbackCache;
 import com.sun.sgs.app.AppContext;
 import com.sun.sgs.app.Channel;
 import com.sun.sgs.app.ChannelListener;
@@ -56,8 +57,8 @@ public class ServerChannelRpcListener implements ChannelListener, ManagedObject,
         }
 
         @Override
-        public RpcCallback<Message> newResponseCallback(final int serviceId, final long requestId) {
-            return new RpcCallbackWrapper(ServerChannelRpcListener.this, serviceId, requestId);
+        public RpcCallback<Message> newResponseCallback(int requestId) {
+            return new RpcCallbackWrapper(ServerChannelRpcListener.this, requestId);
         }
     }
 
@@ -91,8 +92,8 @@ public class ServerChannelRpcListener implements ChannelListener, ManagedObject,
         controller.receivedMessage(message, local);
     }
 
-    public void sendRequest(int serviceId, int methodId, long requestId, Message request) {
-        controller.sendRequest(serviceId, methodId, requestId, request);
+    public void sendMessage(Header header, Message request) {
+        controller.sendMessage(header, request);
     }
 
     LocalRegistry getLocal() {
