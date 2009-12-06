@@ -19,6 +19,8 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Client side channel listener.
@@ -33,6 +35,11 @@ public class ClientChannelRpcListener extends AbstractChannelListener implements
     private final Map<Integer, RemoteCall> callbacks;
 
     /**
+     * Executor used to hand of incomming request and responses.
+     */
+    private final ExecutorService inboundExecutor;
+
+    /**
      * id of the next outgoing RPC request.
      */
     protected int nextRequestId;
@@ -43,12 +50,32 @@ public class ClientChannelRpcListener extends AbstractChannelListener implements
     private ClientChannel channel;
 
     /**
+     * Singlethreaded client listener (not suitable for blocking method invocations).
+     *
      * @param namingService the naming service used to map service names to id's.
      */
     public ClientChannelRpcListener(final ClientNamingService namingService) {
+        this(namingService, 1);
+    }
+
+    /**
+     * Multithreaded client listener.
+     * <p/>
+     * Use this constructor with a thread count higher than 2 so that you can make blocking calls inside incomming RPC
+     * requests.
+     *
+     * @param namingService      the naming service used to map service names to id's.
+     * @param maxIncomingThreads maximum number of threads to use to handle incomming requests.
+     */
+    public ClientChannelRpcListener(final ClientNamingService namingService, int maxIncomingThreads) {
         super(namingService);
         Validate.notNull(namingService, "namingService is null");
 
+        if (maxIncomingThreads < 2) {
+            maxIncomingThreads = 1;
+        }
+
+        this.inboundExecutor = Executors.newFixedThreadPool(maxIncomingThreads);
         this.callbacks = new HashMap<Integer, RemoteCall>();
         this.nextRequestId = 1;
 
@@ -62,11 +89,30 @@ public class ClientChannelRpcListener extends AbstractChannelListener implements
         this.channel = channel;
     }
 
+    public void shutdown(boolean graceful) {
+        if (graceful) {
+            inboundExecutor.shutdown();
+        } else {
+            inboundExecutor.shutdownNow();
+        }
+    }
+
     // ClientChannelListener
 
+    /**
+     * Hands off the incomming message from the socket thread to a dedicate thread(pool) which handles RPC calls.
+     *
+     * @param channel the channel the message was sent on.
+     * @param message the message.
+     */
     @Override
-    public void receivedMessage(ClientChannel channel, ByteBuffer message) {
-        receivedMessage(message);
+    public void receivedMessage(final ClientChannel channel, final ByteBuffer message) {
+        inboundExecutor.submit(new Runnable() {
+            @Override
+            public void run() {
+                receivedMessage(message);
+            }
+        });
     }
 
     @Override
@@ -101,16 +147,16 @@ public class ClientChannelRpcListener extends AbstractChannelListener implements
         Descriptors.MethodDescriptor method, RpcController controller,
         Message request, Message responsePrototype) throws ServiceException {
 
-        final RpcCallbackImpl callback = new RpcCallbackImpl();
+        final BlockingRpcCallback callback = new BlockingRpcCallback();
         callMethod(method, controller, request, responsePrototype, RpcUtil.newOneTimeCallback(callback));
         return callback.getMessage(controller);
     }
 
-    private static class RpcCallbackImpl implements RpcCallback<Message> {
+    private static class BlockingRpcCallback implements RpcCallback<Message> {
         private final CountDownLatch latch;
         private volatile Message message;
 
-        RpcCallbackImpl() {
+        BlockingRpcCallback() {
             this.latch = new CountDownLatch(1);
         }
 
