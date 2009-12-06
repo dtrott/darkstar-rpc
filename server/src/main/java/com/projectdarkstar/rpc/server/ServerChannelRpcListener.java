@@ -33,6 +33,7 @@ public class ServerChannelRpcListener extends AbstractChannelListener implements
 
     private final ManagedReference<RemoteCallMap> callbacks;
     private final ManagedReference<ManagedSerializable<Integer>> nextRequestId;
+    private final RpcChannelProxy rpcChannelProxy;
     private volatile ManagedReference<Channel> channel;
 
     public ServerChannelRpcListener(final ServerNamingService namingService) {
@@ -42,8 +43,21 @@ public class ServerChannelRpcListener extends AbstractChannelListener implements
 
         this.callbacks = dataManager.createReference(new RemoteCallMap());
         this.nextRequestId = dataManager.createReference(new ManagedSerializable<Integer>(1));
+        this.rpcChannelProxy = new RpcChannelProxy(dataManager.createReference(this));
 
         registerService(MetaService.Interface.class, namingService);
+    }
+
+    /**
+     * Returns the RpcChannelProxy object.
+     * <p/>
+     * This object can be used to build stubs
+     * and can be stored in other objects to make it easy to create new RpcControllers.
+     *
+     * @return the RpcChannelProxy object.
+     */
+    public RpcChannelProxy getRpcChannelProxy() {
+        return rpcChannelProxy;
     }
 
     public void setChannel(Channel channel) {
