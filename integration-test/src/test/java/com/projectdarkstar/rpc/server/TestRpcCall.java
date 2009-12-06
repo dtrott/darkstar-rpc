@@ -4,10 +4,8 @@ import com.example.Example.SimpleService;
 import com.example.Example.StringPair;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.RpcCallback;
-import com.google.protobuf.RpcChannel;
 import com.google.protobuf.RpcController;
 import com.projectdarkstar.rpc.CoreRpc.Header;
-import com.projectdarkstar.rpc.common.DarkstarRpc;
 import static com.projectdarkstar.rpc.server.TestUtils.buildPair;
 import com.sun.sgs.app.AppContext;
 import com.sun.sgs.app.Channel;
@@ -72,12 +70,10 @@ public class TestRpcCall {
         final ServerChannelRpcListener listener = new ServerChannelRpcListener(ServerNamingServiceFactory.getNamingService());
         final Channel channel = AppContext.getChannelManager().createChannel("testChannel", listener, Delivery.RELIABLE);
         listener.setChannel(channel);
-        final DarkstarRpc darkstarRpc = listener.getDarkstarRpc();
 
-        RpcChannel rpcChannel = darkstarRpc.getRpcChannel();
-        final RpcController controller = darkstarRpc.newRpcController();
+        final RpcController controller = listener.newRpcController();
 
-        final SimpleService.Stub helloStub = SimpleService.newStub(rpcChannel);
+        final SimpleService.Stub helloStub = SimpleService.newStub(listener);
 
         helloStub.exchange(controller, buildPair("hello", "world"), mockCallback);
 
@@ -92,7 +88,7 @@ public class TestRpcCall {
 
         buffer.flip();
 
-        darkstarRpc.registerService(SimpleService.Interface.class, new SimpleServiceImpl());
+        listener.registerService(SimpleService.Interface.class, new SimpleServiceImpl());
 
         listener.receivedMessage(channel, null, buffer);
 

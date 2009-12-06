@@ -4,10 +4,10 @@ import com.google.protobuf.Descriptors.ServiceDescriptor;
 import com.google.protobuf.RpcCallback;
 import com.google.protobuf.RpcController;
 import com.projectdarkstar.rpc.CoreRpc;
+import com.projectdarkstar.rpc.util.ServiceDefinition;
 import com.projectdarkstar.rpc.CoreRpc.MetaService;
 import com.projectdarkstar.rpc.CoreRpc.ServiceDetails;
 import com.projectdarkstar.rpc.common.NamingService;
-import com.projectdarkstar.rpc.common.ServiceDefinition;
 import com.sun.sgs.app.AppContext;
 import com.sun.sgs.app.ManagedObject;
 

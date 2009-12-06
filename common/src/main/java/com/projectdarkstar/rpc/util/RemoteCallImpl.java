@@ -1,7 +1,8 @@
-package com.projectdarkstar.rpc.common;
+package com.projectdarkstar.rpc.util;
 
 import com.google.protobuf.Message;
 import com.google.protobuf.RpcCallback;
+import com.projectdarkstar.rpc.common.RemoteCall;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;

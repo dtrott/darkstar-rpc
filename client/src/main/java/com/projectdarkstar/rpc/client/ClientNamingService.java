@@ -5,9 +5,8 @@ import com.google.protobuf.RpcController;
 import com.google.protobuf.ServiceException;
 import com.projectdarkstar.rpc.CoreRpc.MetaService;
 import com.projectdarkstar.rpc.CoreRpc.ServiceName;
-import com.projectdarkstar.rpc.common.DarkstarRpc;
 import com.projectdarkstar.rpc.common.NamingService;
-import com.projectdarkstar.rpc.common.ServiceDefinition;
+import com.projectdarkstar.rpc.util.ServiceDefinition;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -16,7 +15,7 @@ public class ClientNamingService implements NamingService {
 
     private final Map<Integer, ServiceDefinition> servicesById;
     private final Map<String, ServiceDefinition> servicesByFullName;
-    private DarkstarRpc darkstarRpc;
+    private ClientChannelRpcListener clientListener;
     private MetaService.BlockingInterface metaService;
 
     public ClientNamingService() {
@@ -32,9 +31,9 @@ public class ClientNamingService implements NamingService {
         this.servicesByFullName.put(serviceDefinition.getServiceFullName(), serviceDefinition);
     }
 
-    void setDarkstarRpc(DarkstarRpc darkstarRpc) {
-        this.darkstarRpc = darkstarRpc;
-        this.metaService = MetaService.newBlockingStub(darkstarRpc.getBlockingRpcChannel());
+    public void setClientListener(ClientChannelRpcListener clientListener) {
+        this.clientListener = clientListener;
+        this.metaService = MetaService.newBlockingStub(clientListener);
     }
 
     @Override
@@ -74,7 +73,7 @@ public class ClientNamingService implements NamingService {
 
     ServiceDefinition getServiceDetails(final String name) {
         try {
-            final RpcController rpcController = darkstarRpc.newRpcController();
+            final RpcController rpcController = clientListener.newRpcController();
             final ServiceName request = ServiceName.newBuilder().setFullName(name).build();
             return new ServiceDefinition(metaService.lookupService(rpcController, request));
         } catch (ServiceException e) {

@@ -7,112 +7,94 @@ import com.google.protobuf.RpcCallback;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.RpcUtil;
 import com.google.protobuf.ServiceException;
-import com.projectdarkstar.rpc.CoreRpc.Header;
-import com.projectdarkstar.rpc.common.AbstractChannelController;
-import com.projectdarkstar.rpc.common.CallbackCache;
-import com.projectdarkstar.rpc.common.DarkstarRpc;
-import com.projectdarkstar.rpc.common.DarkstarRpcImpl;
-import com.projectdarkstar.rpc.common.LocalRegistry;
-import com.projectdarkstar.rpc.common.LocalRegistryImpl;
+import com.projectdarkstar.rpc.common.AbstractChannelListener;
+import com.projectdarkstar.rpc.common.RemoteCall;
+import com.projectdarkstar.rpc.util.RemoteCallImpl;
 import com.sun.sgs.client.ClientChannel;
 import com.sun.sgs.client.ClientChannelListener;
 import org.apache.commons.lang.Validate;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class ClientChannelRpcListener extends DarkstarRpcImpl
-    implements ClientChannelListener, BlockingRpcChannel, DarkstarRpc {
+/**
+ * Client side channel listener.
+ * <p/>
+ * The client side is much simpler than the server as it doesn't have to worry about ManagedObject's and Serialization.
+ */
+public class ClientChannelRpcListener extends AbstractChannelListener implements ClientChannelListener, BlockingRpcChannel {
 
-    private final ClientChannelController controller;
-    private final CallbackCache callbackCache;
-    private final LocalRegistryImpl local;
+    /**
+     * Cache of outgoing calls, which is used to route responses back to the correct callback.
+     */
+    private final Map<Integer, RemoteCall> callbacks;
 
+    /**
+     * id of the next outgoing RPC request.
+     */
+    protected int nextRequestId;
+
+    /**
+     * The underlying channel used to send messages.
+     */
     private ClientChannel channel;
 
-    public DarkstarRpc getDarkstarRpc() {
-        return this;
-    }
-
-    private class ClientChannelController extends AbstractChannelController {
-        @Override
-        protected CallbackCache getCallbackCache() {
-            return callbackCache;
-        }
-
-        protected void sendToChannel(ByteBuffer buf) {
-            try {
-                if (channel == null) {
-                    throw new IllegalStateException("No connection");
-                }
-                channel.send(buf);
-            } catch (IllegalStateException e) {
-                throw new RuntimeException(e);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        @Override
-        public RpcCallback<Message> newResponseCallback(final int requestId) {
-
-            return new RpcCallback<Message>() {
-                @Override
-                public void run(Message message) {
-                    controller.sendResponse(requestId, message);
-                }
-            };
-        }
-    }
-
+    /**
+     * @param namingService the naming service used to map service names to id's.
+     */
     public ClientChannelRpcListener(final ClientNamingService namingService) {
         super(namingService);
         Validate.notNull(namingService, "namingService is null");
 
-        this.callbackCache = new ClientCallbackCache();
-        this.controller = new ClientChannelController();
-        this.local = new LocalRegistryImpl(namingService, controller);
+        this.callbacks = new HashMap<Integer, RemoteCall>();
+        this.nextRequestId = 1;
 
-        namingService.setDarkstarRpc(this);
+        namingService.setClientListener(this);
+    }
+
+    public void setChannel(ClientChannel channel) {
+        if (this.channel != null) {
+            throw new IllegalStateException("setChannel() this.channel should be null");
+        }
+        this.channel = channel;
+    }
+
+    // ClientChannelListener
+
+    @Override
+    public void receivedMessage(ClientChannel channel, ByteBuffer message) {
+        receivedMessage(message);
     }
 
     @Override
-    public <T> void registerService(Class<T> serviceInterfaceClass, T service) {
-        local.registerService(serviceInterfaceClass, service);
-    }
-
-    public LocalRegistry getLocalRegistry() {
-        return local;
-    }
-
-    public RpcController newRpcController() {
-        return callbackCache.newRpcController();
-    }
-
-    public BlockingRpcChannel getBlockingRpcChannel() {
-        return this;
-    }
-
-    public ClientChannelListener joinedChannel(ClientChannel channel) {
-        assert this.channel == null;
-        this.channel = channel;
-        return this;
-    }
-
     public void leftChannel(ClientChannel channel) {
-        assert this.channel == channel;
+        if (this.channel != channel) {
+            throw new IllegalStateException("leftChannel() called with incorrect channel");
+        }
         this.channel = null;
     }
 
-    public void receivedMessage(ClientChannel channel, ByteBuffer message) {
-        controller.receivedMessage(message, local);
+    // DarkstarRpc
+
+    public RemoteCall newRpcController() {
+        final int requestId = getNextRequestId();
+        RemoteCallImpl remoteRpcCall = new RemoteCallImpl(requestId);
+
+        synchronized (callbacks) {
+            callbacks.put(requestId, remoteRpcCall);
+        }
+
+        return remoteRpcCall;
     }
 
-    @Override
-    protected void sendMessage(Header header, Message request) {
-        controller.sendMessage(header, request);
+    private synchronized int getNextRequestId() {
+        return this.nextRequestId++;
     }
+
+    // RPC Blocking Channel
 
     @Override
     public Message callBlockingMethod(
@@ -138,7 +120,7 @@ public class ClientChannelRpcListener extends DarkstarRpcImpl
             latch.countDown();
         }
 
-        public Message getMessage(RpcController controller) throws ServiceException {
+        private Message getMessage(RpcController controller) throws ServiceException {
             try {
                 latch.await();
                 return message;
@@ -146,6 +128,46 @@ public class ClientChannelRpcListener extends DarkstarRpcImpl
                 controller.setFailed(e.getMessage());
                 throw new ServiceException(e.getMessage());
             }
+        }
+    }
+
+    // Protected Methods
+
+    /**
+     * Generates a proxy to route the response of a local call back to the remote system.
+     * <p/>
+     * The object returned is a flyweight that sits over the channel.
+     *
+     * @param requestId the id of the original request that this is a response to.
+     * @return the new callback object.
+     */
+    protected RpcCallback<Message> newResponseCallback(final int requestId) {
+
+        return new RpcCallback<Message>() {
+            @Override
+            public void run(Message message) {
+                sendResponse(requestId, message);
+            }
+        };
+    }
+
+    @Override
+    protected RemoteCall removeCallback(int requestId) {
+        synchronized (callbacks) {
+            return callbacks.remove(requestId);
+        }
+    }
+
+    protected void sendToChannel(ByteBuffer buf) {
+        try {
+            if (channel == null) {
+                throw new IllegalStateException("No connection");
+            }
+            channel.send(buf);
+        } catch (IllegalStateException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 }

@@ -1,4 +1,4 @@
-package com.projectdarkstar.rpc.common;
+package com.projectdarkstar.rpc.util;
 
 import com.google.protobuf.Descriptors.MethodDescriptor;
 import com.google.protobuf.Descriptors.ServiceDescriptor;

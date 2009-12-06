@@ -2,101 +2,102 @@ package com.projectdarkstar.rpc.server;
 
 import com.google.protobuf.Message;
 import com.google.protobuf.RpcCallback;
-import com.google.protobuf.RpcController;
 import com.google.protobuf.RpcUtil;
 import com.google.protobuf.SerializableRpcCallbackProvider;
-import com.projectdarkstar.rpc.CoreRpc.Header;
 import com.projectdarkstar.rpc.CoreRpc.MetaService;
-import com.projectdarkstar.rpc.common.AbstractChannelController;
-import com.projectdarkstar.rpc.common.CallbackCache;
-import com.projectdarkstar.rpc.common.ChannelController;
-import com.projectdarkstar.rpc.common.DarkstarRpc;
-import com.projectdarkstar.rpc.common.LocalRegistry;
-import com.projectdarkstar.rpc.common.LocalRegistryImpl;
-import com.projectdarkstar.rpc.common.NamingService;
+import com.projectdarkstar.rpc.common.AbstractChannelListener;
+import com.projectdarkstar.rpc.common.RemoteCall;
+import com.projectdarkstar.rpc.util.RemoteCallImpl;
 import com.sun.sgs.app.AppContext;
 import com.sun.sgs.app.Channel;
 import com.sun.sgs.app.ChannelListener;
 import com.sun.sgs.app.ClientSession;
+import com.sun.sgs.app.DataManager;
 import com.sun.sgs.app.ManagedObject;
 import com.sun.sgs.app.ManagedReference;
-import org.apache.commons.lang.Validate;
+import com.sun.sgs.app.util.ManagedSerializable;
+import com.sun.sgs.app.util.ScalableHashMap;
 
-import java.io.Serializable;
 import java.nio.ByteBuffer;
 
-public class ServerChannelRpcListener implements ChannelListener, ManagedObject, Serializable {
-    private static final long serialVersionUID = 1L;
-
-    private final ServerCallbackCache callbackCache;
-    private final ChannelController controller;
-    private final LocalRegistry local;
-    private final NamingService namingService;
-
-    private volatile ManagedReference<Channel> channel;
-
+public class ServerChannelRpcListener extends AbstractChannelListener implements ChannelListener, ManagedObject {
     static {
         RpcUtil.setRpcCallbackProvider(new SerializableRpcCallbackProvider());
     }
 
-    private class ServerChannelController extends AbstractChannelController implements Serializable {
-        @Override
-        protected CallbackCache getCallbackCache() {
-            return callbackCache;
-        }
-
-        protected void sendToChannel(ByteBuffer buf) {
-            try {
-                if (channel == null) {
-                    throw new IllegalStateException("No connection");
-                }
-                channel.get().send(null, buf);
-            } catch (IllegalStateException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        @Override
-        public RpcCallback<Message> newResponseCallback(int requestId) {
-            return new RpcCallbackWrapper(ServerChannelRpcListener.this, requestId);
-        }
+    private static class RemoteCallMap extends ScalableHashMap<Integer, ManagedSerializable<RemoteCall>> {
+        private static final long serialVersionUID = 1L;
     }
+
+    private static final long serialVersionUID = 1L;
+
+    private final ManagedReference<RemoteCallMap> callbacks;
+    private final ManagedReference<ManagedSerializable<Integer>> nextRequestId;
+    private volatile ManagedReference<Channel> channel;
 
     public ServerChannelRpcListener(final ServerNamingService namingService) {
-        Validate.notNull(namingService, "namingService is null");
+        super(namingService);
 
-        this.callbackCache = new ServerCallbackCache();
-        this.controller = new ServerChannelController();
-        this.local = new LocalRegistryImpl(namingService, controller);
-        this.namingService = namingService;
-        local.registerService(MetaService.Interface.class, namingService);
-    }
+        final DataManager dataManager = AppContext.getDataManager();
 
-    public DarkstarRpc getDarkstarRpc() {
-        return new ServerDarkstarRpc(this, callbackCache, namingService);
-    }
+        this.callbacks = dataManager.createReference(new RemoteCallMap());
+        this.nextRequestId = dataManager.createReference(new ManagedSerializable<Integer>(1));
 
-    ChannelController getController() {
-        return controller;
-    }
-
-    public RpcController newRpcController() {
-        return callbackCache.newRpcController();
+        registerService(MetaService.Interface.class, namingService);
     }
 
     public void setChannel(Channel channel) {
         this.channel = AppContext.getDataManager().createReference(channel);
     }
 
+    // DarkstarRpc Implementation
+
+    public RemoteCall newRpcController() {
+        final int requestId = getNextRequestId();
+
+        final ManagedSerializable<RemoteCall> managedRemoteCall =
+            new ManagedSerializable<RemoteCall>(new RemoteCallImpl(requestId));
+
+        callbacks.getForUpdate().put(requestId, managedRemoteCall);
+
+        return new RemoteCallWrapper(managedRemoteCall);
+    }
+
+    private int getNextRequestId() {
+        final ManagedSerializable<Integer> nextValue = nextRequestId.getForUpdate();
+        final int value = nextValue.get();
+        nextValue.set(value + 1);
+        return value;
+    }
+
+    // ChannelListener
+
+    @Override
     public void receivedMessage(Channel channel, ClientSession sender, ByteBuffer message) {
-        controller.receivedMessage(message, local);
+        receivedMessage(message);
     }
 
-    public void sendMessage(Header header, Message request) {
-        controller.sendMessage(header, request);
+    // Protected
+    @Override
+    protected RpcCallback<Message> newResponseCallback(int requestId) {
+        return new ServerRpcCallback(this, requestId);
     }
 
-    LocalRegistry getLocal() {
-        return local;
+    @Override
+    protected RemoteCall removeCallback(int requestId) {
+        final ManagedSerializable<RemoteCall> managedCall = callbacks.getForUpdate().remove(requestId);
+        AppContext.getDataManager().removeObject(managedCall);
+        return managedCall.get();
+    }
+
+    protected void sendToChannel(ByteBuffer buf) {
+        try {
+            if (channel == null) {
+                throw new IllegalStateException("No connection");
+            }
+            channel.get().send(null, buf);
+        } catch (IllegalStateException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
